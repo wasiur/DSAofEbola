@@ -10,31 +10,33 @@
 # Specify the appropriate data paths and source to run.
 #
 # Written By: Harley Vossler and Grzegorz Rempala 
-# Last Edited: Nov 2, 2021
+# Last Edited: Feb 15, 2022
 #
 ################################################################################
 
 ### Needed libraries ###
 
-library(rstan)                    # Stan MCMC package
+require(rstan); 								# Stan MCMC package
+options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
-set.seed(1247)                    # Fixed seed for repoducibility                         
+set.seed(1247); 								# Fixed seed for reproducibility
 
 ################################################################################
 
 ### Input and format data 
 
-file.name= "Ebola_Wave3.csv"
-							
-data<-read.csv(file.name);       
-data=data[,-1]							
-data=data[order(data[,1]),]
-T=max(data[,1])
-k=length(data[,1])
-not.censored=ifelse(data[,2]<=T,1,0) # Check for data censoring  
-data[,2]=pmin(T,data[,2])
+file.name= "EVD_Wave3.csv"
 
-data_SIR<-list(k=k,t0=0,ti=data[,1],Ti=data[,2],event=not.censored)
+dat <- read.csv(file.name);       					
+dat = dat[order(dat[,1]),]
+T = max(dat[,1],na.rm=T)
+k = length(dat[,1])
+dat$hosp = pmin(T,dat$hosp)
+dat$event2[which(T==dat$hosp)]<-0 				# Check if data needs censoring 
+
+data_SIR <- list(k=k,t0=0,ti=dat$onset,Ti=dat$hosp,event1=dat$event1,event2=dat$event2)
+
+##################################################################################
 
 ##############################################################################
 
@@ -60,7 +62,7 @@ print(summary(fit))           # output fit summary stats
 print(plot(fit, show_density=T,pars=c("beta","gamma"),
            include=TRUE,fill_color="green")) 
 
- ### save final samples to file
+### save final samples to file
 
 out.fit = as.data.frame(cbind(extract(fit)$gamma,
       extract(fit)$beta,extract(fit)$rho,extract(fit)$lp__ ))
